@@ -30,3 +30,10 @@ export interface PostUpdateDTO {
   title: string
   body: string
 }
+
+export interface PostListResponse {
+  posts: Post[]
+  total: number
+  skip: number
+  limit: number
+}

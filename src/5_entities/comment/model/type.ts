@@ -3,10 +3,10 @@ export interface Comment {
   body: string
   postId: number
   likes: number
-  user: User
+  user: CommentUser
 }
 
-export interface User {
+export interface CommentUser {
   fullName: string
   id: number
   username: string

@@ -13,9 +13,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../6_shared/ui
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../6_shared/ui/table"
 import { Tag } from "../5_entities/tag/model/type"
 import { TagAPI } from "../5_entities/tag/model/api"
-import { Post } from "../5_entities/post/model/type"
+import { Post, PostCreateDTO } from "../5_entities/post/model/type"
 import { Comment, NewComment } from "../5_entities/comment/model/type"
 import { SelectedUser, User } from "../5_entities/users/model/type"
+import { postAPI } from "../5_entities/post/model/api"
+import { userAPI } from "../5_entities/users/model/api"
 const PostsManager = () => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -44,7 +46,7 @@ const PostsManager = () => {
   // 수정 대화 상자 표시
   const [showEditDialog, setShowEditDialog] = useState(false)
   // 새로운 게시물
-  const [newPost, setNewPost] = useState({ title: "", body: "", userId: 1 })
+  const [newPost, setNewPost] = useState<PostCreateDTO>({ title: "", body: "", userId: 1 })
   // 로딩 상태
   const [loading, setLoading] = useState(false)
   // 태그 목록
@@ -85,12 +87,13 @@ const PostsManager = () => {
   const fetchPosts = async () => {
     setLoading(true)
     try {
-      const postsRes = await fetch(`/api/posts?limit=${limit}&skip=${skip}`)
-      const postsData = await postsRes.json()
+      // 게시물 가져오기
+      const postsData = await postAPI.getPosts({ limit, skip })
 
-      const usersRes = await fetch("/api/users?limit=0&select=username,image")
-      const usersData = await usersRes.json()
+      // 사용자 가져오기
+      const usersData = await userAPI.getUsers({ limit: 0, skip: 0 })
 
+      // 게시물에 사용자 추가
       const postsWithUsers = postsData.posts.map((post: Post) => ({
         ...post,
         author: usersData.users.find((user: User) => user.id === post.userId),
@@ -123,9 +126,12 @@ const PostsManager = () => {
     }
     setLoading(true)
     try {
-      const response = await fetch(`/api/posts/search?q=${searchQuery}`)
-      const data = await response.json()
+      // 게시물 검색
+      const data = await postAPI.searchPosts(searchQuery)
+      // 사용자 가져오기
       setPosts(data.posts)
+
+      // 총 게시물 수
       setTotal(data.total)
     } catch (error) {
       console.error("게시물 검색 오류:", error)
@@ -164,13 +170,14 @@ const PostsManager = () => {
   // 게시물 추가
   const addPost = async () => {
     try {
-      const response = await fetch("/api/posts/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newPost),
+      const newPostData = await postAPI.addPost({
+        ...newPost,
+        id: 0,
+        tags: [],
+        reactions: { likes: 0, dislikes: 0 },
+        views: 0,
       })
-      const data = await response.json()
-      setPosts([data, ...posts])
+      setPosts([newPostData, ...posts])
       setShowAddDialog(false)
       setNewPost({ title: "", body: "", userId: 1 })
     } catch (error) {
@@ -181,13 +188,9 @@ const PostsManager = () => {
   // 게시물 업데이트
   const updatePost = async () => {
     try {
-      const response = await fetch(`/api/posts/${selectedPost?.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(selectedPost),
-      })
-      const data = await response.json()
-      setPosts(posts.map((post) => (post.id === data.id ? data : post)))
+      if (!selectedPost) return
+      const response = await postAPI.updatePost(selectedPost)
+      setPosts(posts.map((post) => (post.id === response.id ? response : post)))
       setShowEditDialog(false)
     } catch (error) {
       console.error("게시물 업데이트 오류:", error)
@@ -197,9 +200,7 @@ const PostsManager = () => {
   // 게시물 삭제
   const deletePost = async (id: number) => {
     try {
-      await fetch(`/api/posts/${id}`, {
-        method: "DELETE",
-      })
+      await postAPI.deletePost(id)
       setPosts(posts.filter((post) => post.id !== id))
     } catch (error) {
       console.error("게시물 삭제 오류:", error)
