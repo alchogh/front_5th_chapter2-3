@@ -7,8 +7,26 @@ export interface UserListResponse {
 
 export interface User {
   id: number
-  username: string
+  firstName: string
+  lastName: string
+  maidenName: string
+  age: number
   image: string
+  username: string
+  email: string
+  address: {
+    address: string
+    city: string
+    state: string
+  }
+  company: {
+    name: string
+    title: string
+  }
+  phone: string
+  birthDate: string
+  bloodGroup: string
+  height: number
 }
 
 export interface SelectedUser {

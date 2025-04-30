@@ -11,11 +11,12 @@ export const highlightText = ({ text, highlight }: HighlightTextProps) => {
 
   return (
     <span>
-      {parts.map((part) => {
+      {parts.map((part, index) => {
+        const key = `${part.part}-${index}` // or `highlight-${index}`, etc.
         if (part.highlight) {
-          return <mark key={part.part}>{part.part}</mark>
+          return <mark key={key}>{part.part}</mark>
         } else {
-          return <span key={part.part}>{part.part}</span>
+          return <span key={key}>{part.part}</span>
         }
       })}
     </span>

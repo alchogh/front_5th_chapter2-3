@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../6_shared/ui
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../6_shared/ui/table"
 import { Tag } from "../5_entities/tag/model/type"
 import { TagAPI } from "../5_entities/tag/model/api"
-import { Post, PostCreateDTO } from "../5_entities/post/model/type"
+import { Post, PostCreateDTO, PostFromAPI, Author } from "../5_entities/post/model/type"
 import { Comment, NewComment } from "../5_entities/comment/model/type"
 import { SelectedUser, User } from "../5_entities/users/model/type"
 import { postAPI } from "../5_entities/post/model/api"
@@ -25,6 +25,7 @@ const PostsManager = () => {
 
   // 상태 관리
   const [posts, setPosts] = useState<Post[]>([])
+
   // 총 게시물 수
   const [total, setTotal] = useState<number>(0)
 
@@ -89,15 +90,20 @@ const PostsManager = () => {
     try {
       // 게시물 가져오기
       const postsData = await postAPI.getPosts({ limit, skip })
-
       // 사용자 가져오기
       const usersData = await userAPI.getUsers({ limit: 0, skip: 0 })
 
       // 게시물에 사용자 추가
-      const postsWithUsers = postsData.posts.map((post: Post) => ({
-        ...post,
-        author: usersData.users.find((user: User) => user.id === post.userId),
-      }))
+      const postsWithUsers: Post[] = postsData.posts.map((post: PostFromAPI) => {
+        const author = usersData.users.find((user: User) => user.id === post.userId)
+        if (!author) {
+          throw new Error(`User not found for userId: ${post.userId}`)
+        }
+        return {
+          ...post,
+          author,
+        }
+      })
 
       setPosts(postsWithUsers)
       setTotal(postsData.total)
@@ -128,8 +134,16 @@ const PostsManager = () => {
     try {
       // 게시물 검색
       const data = await postAPI.searchPosts(searchQuery)
+
+      // author 추가
+      const usersData = await userAPI.getUsers({ limit: 0, skip: 0 })
+      const postsWithAuthor: Post[] = data.posts.map((post) => {
+        const author = usersData.users.find((u) => u.id === post.userId)
+        if (!author) throw new Error(`author not found for userId ${post.userId}`)
+        return { ...post, author }
+      })
       // 사용자 가져오기
-      setPosts(data.posts)
+      setPosts(postsWithAuthor)
 
       // 총 게시물 수
       setTotal(data.total)
@@ -170,14 +184,17 @@ const PostsManager = () => {
   // 게시물 추가
   const addPost = async () => {
     try {
-      const newPostData = await postAPI.addPost({
-        ...newPost,
-        id: 0,
-        tags: [],
-        reactions: { likes: 0, dislikes: 0 },
-        views: 0,
-      })
-      setPosts([newPostData, ...posts])
+      const newPostFromAPI = await postAPI.addPost(newPost)
+      const usersData = await userAPI.getUsers({ limit: 0, skip: 0 })
+      const author = usersData.users.find((u) => u.id === newPost.userId)
+      if (!author) throw new Error("author not found")
+
+      const newPostWithAuthor: Post = {
+        ...newPostFromAPI,
+        author,
+      }
+
+      setPosts([newPostWithAuthor, ...posts])
       setShowAddDialog(false)
       setNewPost({ title: "", body: "", userId: 1 })
     } catch (error) {
@@ -302,7 +319,7 @@ const PostsManager = () => {
   }
 
   // 사용자 모달 열기
-  const openUserModal = async (user: User) => {
+  const openUserModal = async (user: Author) => {
     try {
       const response = await fetch(`/api/users/${user.id}`)
       const userData = await response.json()
@@ -377,6 +394,7 @@ const PostsManager = () => {
                 </div>
               </div>
             </TableCell>
+            {/* 작성자 클릭 시 사용자 모달 열기 */}
             <TableCell>
               <div
                 className="flex items-center space-x-2 cursor-pointer"
