@@ -18,11 +18,13 @@ import { SelectedUser, User } from "../5_entities/users/model/type"
 import { postAPI } from "../5_entities/post/model/api"
 import { userAPI } from "../5_entities/users/model/api"
 
-import { TagSelectOptions } from "../4_features/tag/ui/tags"
+import { TagSelectOptions } from "../4_features/tag/ui/tag-select-options"
 import { useCommentFetchQuery } from "../4_features/comment/hooks/use-fetch-comment-query"
-import { CommentList } from "../4_features/comment/ui/comment-list"
+
 import { NewCommentModal } from "../4_features/comment/ui/new-comment-modal"
 import { useUpdateCommentMutation } from "../4_features/comment/hooks/use-update-comment-query"
+
+import { RenderComments } from "../4_features/comment/ui/render-comments"
 
 const PostsManager = () => {
   const navigate = useNavigate()
@@ -65,7 +67,8 @@ const PostsManager = () => {
   // 새로운 댓글
   const [newComment, setNewComment] = useState<NewComment>({ body: "", postId: null, userId: 1 })
   // 댓글 추가 대화 상자 표시
-  const [showAddCommentDialog, setShowAddCommentDialog] = useState(false)
+  // const [showAddCommentDialog, setShowAddCommentDialog] = useState(false)
+
   // 댓글 수정 대화 상자 표시
   const [showEditCommentDialog, setShowEditCommentDialog] = useState(false)
   // 게시물 상세 보기 대화 상자 표시
@@ -216,8 +219,6 @@ const PostsManager = () => {
       console.error("게시물 삭제 오류:", error)
     }
   }
-  // 댓글 목록
-  const { data: comments = [] } = useCommentFetchQuery(selectedPost?.id ?? 0)
 
   // 댓글 업데이트
   const { mutate: updateCommentMutation } = useUpdateCommentMutation()
@@ -233,30 +234,9 @@ const PostsManager = () => {
     })
   }
 
-  // 댓글 좋아요
-  // const likeComment = async (id: number, postId: number) => {
-  //   try {
-  //     const response = await fetch(`/api/comments/${id}`, {
-  //       method: "PATCH",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({ likes: (comments[postId]?.find((c) => c.id === id)?.likes ?? 0) + 1 }),
-  //     })
-  //     const data = await response.json()
-  //     setComments((prev) => ({
-  //       ...prev,
-  //       [postId]: prev[postId].map((comment) =>
-  //         comment.id === data.id ? { ...data, likes: comment.likes + 1 } : comment,
-  //       ),
-  //     }))
-  //   } catch (error) {
-  //     console.error("댓글 좋아요 오류:", error)
-  //   }
-  // }
-
   // 게시물 상세 보기
   const openPostDetail = (post: Post) => {
     setSelectedPost(post)
-    // fetchComments(post.id)
     setShowPostDetailDialog(true)
   }
 
@@ -376,35 +356,35 @@ const PostsManager = () => {
     </Table>
   )
 
-  // 댓글 렌더링
-  const renderComments = () => {
-    // if (!selectedPost?.id) return null
-    return (
-      <div className="mt-2">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold">댓글</h3>
-          <Button
-            size="sm"
-            onClick={() => {
-              setNewComment((prev) => ({ ...prev, postId: selectedPost.id }))
-              setShowAddCommentDialog(true)
-            }}
-          >
-            <Plus className="w-3 h-3 mr-1" />
-            댓글 추가
-          </Button>
-        </div>
-        <div className="space-y-1">
-          <CommentList
-            selectedPost={selectedPost}
-            searchQuery={searchQuery}
-            setSelectedComment={setSelectedComment}
-            setShowEditCommentDialog={setShowEditCommentDialog}
-          />
-        </div>
-      </div>
-    )
-  }
+  // // 댓글 렌더링
+  // const renderComments = () => {
+  //   // if (!selectedPost?.id) return null
+  //   return (
+  //     <div className="mt-2">
+  //       <div className="flex items-center justify-between mb-2">
+  //         <h3 className="text-sm font-semibold">댓글</h3>
+  //         <Button
+  //           size="sm"
+  //           onClick={() => {
+  //             setNewComment((prev) => ({ ...prev, postId: selectedPost.id }))
+  //             setShowAddCommentDialog(true)
+  //           }}
+  //         >
+  //           <Plus className="w-3 h-3 mr-1" />
+  //           댓글 추가
+  //         </Button>
+  //       </div>
+  //       <div className="space-y-1">
+  //         <CommentList
+  //           selectedPost={selectedPost}
+  //           searchQuery={searchQuery}
+  //           setSelectedComment={setSelectedComment}
+  //           setShowEditCommentDialog={setShowEditCommentDialog}
+  //         />
+  //       </div>
+  //     </div>
+  //   )
+  // }
 
   return (
     <Card className="w-full max-w-6xl mx-auto">
@@ -445,6 +425,7 @@ const PostsManager = () => {
                 <SelectValue placeholder="태그 선택" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">모든 태그</SelectItem>
                 {/* 태그 가져오기 */}
                 <TagSelectOptions />
               </SelectContent>
@@ -561,12 +542,7 @@ const PostsManager = () => {
       </Dialog>
 
       {/* 댓글 추가 대화상자 */}
-      <NewCommentModal
-        showAddCommentDialog={showAddCommentDialog}
-        setShowAddCommentDialog={setShowAddCommentDialog}
-        newComment={newComment}
-        setNewComment={setNewComment}
-      />
+      <NewCommentModal newComment={newComment} setNewComment={setNewComment} />
 
       {/* 댓글 수정 대화상자 */}
       <Dialog open={showEditCommentDialog} onOpenChange={setShowEditCommentDialog}>
@@ -596,7 +572,13 @@ const PostsManager = () => {
           </DialogHeader>
           <div className="space-y-4">
             <p>{highlightText({ text: selectedPost?.body, highlight: searchQuery })}</p>
-            {renderComments()}
+            <RenderComments
+              selectedPost={selectedPost}
+              searchQuery={searchQuery}
+              setSelectedComment={setSelectedComment}
+              setNewComment={setNewComment}
+              setShowEditCommentDialog={setShowEditCommentDialog}
+            />
           </div>
         </DialogContent>
       </Dialog>

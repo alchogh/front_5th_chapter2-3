@@ -3,25 +3,23 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../6_sha
 import { NewComment } from "../../../5_entities/comment/model/type"
 import { Button } from "../../../6_shared/ui/buton"
 import { useAddCommentMutation } from "../hooks/use-add-comment-query"
+import { useCommentModalStore } from "../../../6_shared/store/use-comment-modal-store"
 
 interface NewCommentModalProps {
-  showAddCommentDialog: boolean
-  setShowAddCommentDialog: (open: boolean) => void
   newComment: NewComment
   setNewComment: React.Dispatch<React.SetStateAction<NewComment>>
 }
 
 export const NewCommentModal = ({
-  showAddCommentDialog,
   newComment,
-  setShowAddCommentDialog,
+
   setNewComment,
 }: NewCommentModalProps) => {
   // 새로운 댓글
 
   // 댓글 추가
   const { mutate: addCommentMutation } = useAddCommentMutation()
-
+  const { showAddCommentDialog, setShowAddCommentDialog } = useCommentModalStore()
   const addComment = async () => {
     if (!newComment.postId) return
     addCommentMutation(newComment, {

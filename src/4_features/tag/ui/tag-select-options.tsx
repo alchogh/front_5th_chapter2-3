@@ -5,6 +5,7 @@ import { useFetchTagQuery } from "../hooks/use-fetch-tag-query"
 export const TagSelectOptions = () => {
   // 태그 가져오기
   const { data: tags } = useFetchTagQuery()
+
   return (
     <>
       {tags?.map((tag: Tag) => (

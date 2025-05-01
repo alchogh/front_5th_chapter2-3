@@ -25,26 +25,7 @@ export const CommentList = ({
   //댓글 삭제
   const { mutate: deleteCommentMutation } = useDeleteCommentMutation(selectedPost?.id ?? 0)
 
-  // 댓글 좋아요
-  // const likeComment = async (id: number, postId: number) => {
-  //   try {
-  //     const response = await fetch(`/api/comments/${id}`, {
-  //       method: "PATCH",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({ likes: (comments[postId]?.find((c) => c.id === id)?.likes ?? 0) + 1 }),
-  //     })
-  //     const data = await response.json()
-  //     setComments((prev) => ({
-  //       ...prev,
-  //       [postId]: prev[postId].map((comment) =>
-  //         comment.id === data.id ? { ...data, likes: comment.likes + 1 } : comment,
-  //       ),
-  //     }))
-  //   } catch (error) {
-  //     console.error("댓글 좋아요 오류:", error)
-  //   }
-  // }
-
+  //댓글 좋아요
   const { mutate: likeComment } = useLikeCommentQuery()
   return (
     <>
