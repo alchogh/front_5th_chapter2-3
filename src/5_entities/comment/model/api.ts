@@ -18,4 +18,33 @@ export const CommentsAPI = {
     const data = await response.json()
     return data
   },
+
+  //댓글 업데이트
+  updateComment: async (selectedComment: Comment) => {
+    const response = await fetch(`/api/comments/${selectedComment.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body: selectedComment.body }),
+    })
+    const data = await response.json()
+    return data
+  },
+
+  //댓글 삭제
+  deleteComment: async (id: number) => {
+    const response = await fetch(`/api/comments/${id}`, {
+      method: "DELETE",
+    })
+    if (!response.ok) throw new Error("댓글 삭제 실패")
+    return id
+  },
+
+  //댓글 좋아요
+  likeComment: async (id: number) => {
+    const response = await fetch(`/api/comments/${id}`, {
+      method: "PATCH",
+    })
+    const data = await response.json()
+    return data
+  },
 }
