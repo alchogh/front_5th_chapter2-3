@@ -11,13 +11,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Textarea } from "../6_shared/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../6_shared/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../6_shared/ui/table"
-import { Tag } from "../5_entities/tag/model/type"
-import { TagAPI } from "../5_entities/tag/model/api"
+
 import { Post, PostCreateDTO, PostFromAPI, Author } from "../5_entities/post/model/type"
 import { Comment, NewComment } from "../5_entities/comment/model/type"
 import { SelectedUser, User } from "../5_entities/users/model/type"
 import { postAPI } from "../5_entities/post/model/api"
 import { userAPI } from "../5_entities/users/model/api"
+
+import { TagSelectOptions } from "../4_features/tag/ui/tags"
+import { useCommentFetchQuery } from "../4_features/comment/hooks/use-fetch-comment-query"
+import { CommentList } from "../4_features/comment/ui/comment-list"
+
 const PostsManager = () => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -50,12 +54,9 @@ const PostsManager = () => {
   const [newPost, setNewPost] = useState<PostCreateDTO>({ title: "", body: "", userId: 1 })
   // 로딩 상태
   const [loading, setLoading] = useState(false)
-  // 태그 목록
-  const [tags, setTags] = useState<Tag[]>([])
+
   // 선택된 태그
   const [selectedTag, setSelectedTag] = useState(queryParams.get("tag") || "")
-  // 댓글 목록
-  const [comments, setComments] = useState<Record<number, Comment[]>>({})
 
   // 선택된 댓글
   const [selectedComment, setSelectedComment] = useState<Comment | null>(null)
@@ -111,16 +112,6 @@ const PostsManager = () => {
       console.error("게시물 가져오기 오류:", error)
     } finally {
       setLoading(false)
-    }
-  }
-
-  // 태그 가져오기
-  const fetchTags = async () => {
-    try {
-      const data = await TagAPI.getTags()
-      setTags(data)
-    } catch (error) {
-      console.error("태그 가져오기 오류:", error)
     }
   }
 
@@ -223,18 +214,9 @@ const PostsManager = () => {
       console.error("게시물 삭제 오류:", error)
     }
   }
+  // 댓글 목록
 
-  // 댓글 가져오기
-  const fetchComments = async (postId: number) => {
-    if (comments[postId]) return // 이미 불러온 댓글이 있으면 다시 불러오지 않음
-    try {
-      const response = await fetch(`/api/comments/post/${postId}`)
-      const data = await response.json()
-      setComments((prev) => ({ ...prev, [postId]: data.comments }))
-    } catch (error) {
-      console.error("댓글 가져오기 오류:", error)
-    }
-  }
+  const { data: comments = [] } = useCommentFetchQuery(selectedPost?.id ?? 0)
 
   // 댓글 추가
   const addComment = async () => {
@@ -314,7 +296,7 @@ const PostsManager = () => {
   // 게시물 상세 보기
   const openPostDetail = (post: Post) => {
     setSelectedPost(post)
-    fetchComments(post.id)
+    // fetchComments(post.id)
     setShowPostDetailDialog(true)
   }
 
@@ -330,10 +312,6 @@ const PostsManager = () => {
       console.error("사용자 정보 가져오기 오류:", error)
     }
   }
-
-  useEffect(() => {
-    fetchTags()
-  }, [])
 
   useEffect(() => {
     if (selectedTag) {
@@ -439,8 +417,8 @@ const PostsManager = () => {
   )
 
   // 댓글 렌더링
-  const renderComments = (postId: number | undefined) => {
-    if (!postId) return null
+  const renderComments = () => {
+    // if (!selectedPost?.id) return null
     return (
       <div className="mt-2">
         <div className="flex items-center justify-between mb-2">
@@ -448,7 +426,7 @@ const PostsManager = () => {
           <Button
             size="sm"
             onClick={() => {
-              setNewComment((prev) => ({ ...prev, postId }))
+              setNewComment((prev) => ({ ...prev, postId: selectedPost.id }))
               setShowAddCommentDialog(true)
             }}
           >
@@ -457,33 +435,7 @@ const PostsManager = () => {
           </Button>
         </div>
         <div className="space-y-1">
-          {comments[postId]?.map((comment) => (
-            <div key={comment.id} className="flex items-center justify-between text-sm border-b pb-1">
-              <div className="flex items-center space-x-2 overflow-hidden">
-                <span className="font-medium truncate">{comment.user.username}:</span>
-                <span className="truncate">{highlightText({ text: comment.body, highlight: searchQuery })}</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <Button variant="ghost" size="sm" onClick={() => likeComment(comment.id, postId)}>
-                  <ThumbsUp className="w-3 h-3" />
-                  <span className="ml-1 text-xs">{comment.likes}</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedComment(comment)
-                    setShowEditCommentDialog(true)
-                  }}
-                >
-                  <Edit2 className="w-3 h-3" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => deleteComment(comment.id, postId)}>
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              </div>
-            </div>
-          ))}
+          <CommentList selectedPost={selectedPost} searchQuery={searchQuery} />
         </div>
       </div>
     )
@@ -528,12 +480,8 @@ const PostsManager = () => {
                 <SelectValue placeholder="태그 선택" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">모든 태그</SelectItem>
-                {tags.map((tag: Tag) => (
-                  <SelectItem key={tag.url} value={tag.slug}>
-                    {tag.slug}
-                  </SelectItem>
-                ))}
+                {/* 태그 가져오기 */}
+                <TagSelectOptions />
               </SelectContent>
             </Select>
             <Select value={sortBy} onValueChange={setSortBy}>
@@ -692,7 +640,7 @@ const PostsManager = () => {
           </DialogHeader>
           <div className="space-y-4">
             <p>{highlightText({ text: selectedPost?.body, highlight: searchQuery })}</p>
-            {renderComments(selectedPost?.id)}
+            {renderComments()}
           </div>
         </DialogContent>
       </Dialog>
