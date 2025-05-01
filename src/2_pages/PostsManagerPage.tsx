@@ -21,6 +21,7 @@ import { userAPI } from "../5_entities/users/model/api"
 import { TagSelectOptions } from "../4_features/tag/ui/tags"
 import { useCommentFetchQuery } from "../4_features/comment/hooks/use-fetch-comment-query"
 import { CommentList } from "../4_features/comment/ui/comment-list"
+import { useAddCommentMutation } from "../4_features/comment/hooks/use-add-comment-query"
 
 const PostsManager = () => {
   const navigate = useNavigate()
@@ -219,24 +220,37 @@ const PostsManager = () => {
   const { data: comments = [] } = useCommentFetchQuery(selectedPost?.id ?? 0)
 
   // 댓글 추가
+  const { mutate: addCommentMutation } = useAddCommentMutation()
   const addComment = async () => {
-    try {
-      const response = await fetch("/api/comments/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newComment),
-      })
-      const data = await response.json()
-      setComments((prev) => ({
-        ...prev,
-        [data.postId]: [...(prev[data.postId] || []), data],
-      }))
-      setShowAddCommentDialog(false)
-      setNewComment({ body: "", postId: null, userId: 1 })
-    } catch (error) {
-      console.error("댓글 추가 오류:", error)
-    }
+    if (!newComment.postId) return
+    addCommentMutation(newComment, {
+      onSuccess: () => {
+        setShowAddCommentDialog(false)
+        setNewComment({ body: "", postId: null, userId: 1 })
+      },
+      onError: (error) => {
+        console.error("댓글 추가 오류", error)
+      },
+    })
   }
+  // const addComment = async () => {
+  //   try {
+  //     const response = await fetch("/api/comments/add", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify(newComment),
+  //     })
+  //     const data = await response.json()
+  //     setComments((prev) => ({
+  //       ...prev,
+  //       [data.postId]: [...(prev[data.postId] || []), data],
+  //     }))
+  //     setShowAddCommentDialog(false)
+  //     setNewComment({ body: "", postId: null, userId: 1 })
+  //   } catch (error) {
+  //     console.error("댓글 추가 오류:", error)
+  //   }
+  // }
 
   // 댓글 업데이트
   const updateComment = async () => {
