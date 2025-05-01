@@ -1,30 +1,36 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { postAPI } from "../../../5_entities/post/model/api"
-import { PostListResponse, PostCreateDTO, Post } from "../../../5_entities/post/model/type"
-import { POSTS_QUERY_KEY } from "../../../6_shared/types/query-keys"
+import { PostCreateDTO, Post } from "../../../5_entities/post/model/type"
 
-export const useAddPostMutation = () => {
+import { userAPI } from "../../../5_entities/users/model/api"
+import { POSTS_QUERY_KEY, SortOrder } from "../../../6_shared/types/query-keys"
+
+export const useAddPostMutation = (params: {
+  limit: number
+  skip: number
+  searchQuery?: string
+  sortBy?: string
+  sortOrder?: SortOrder
+  selectedTag?: string
+}) => {
   const queryClient = useQueryClient()
-  const defaultKey = POSTS_QUERY_KEY({
-    limit: 10,
-    skip: 0,
-    searchQuery: undefined,
-    tag: undefined,
-  })
+  const queryKey = POSTS_QUERY_KEY(params)
   return useMutation<Post, Error, PostCreateDTO>({
-    mutationFn: postAPI.addPost,
+    mutationFn: async (newPost) => {
+      const newPostFromAPI = await postAPI.addPost(newPost)
+
+      const usersData = await userAPI.getUsers({ limit: 0, skip: 0 })
+      const author = usersData.users.find((u) => u.id === newPost.userId)
+      if (!author) throw new Error("author not found")
+
+      return {
+        ...newPostFromAPI,
+        author,
+      }
+    },
     onSuccess: (newPost: Post) => {
       console.log("🟢 새 게시물 성공적으로 추가됨:", newPost)
-      // 기존 캐시 업데이트 방식 ①: invalidate
-      queryClient.invalidateQueries({ queryKey: defaultKey })
-
-      // 또는 캐시 업데이트 방식 ②: 직접 삽입
-      queryClient.setQueryData<PostListResponse>(defaultKey, (old) => ({
-        total: (old?.total ?? 0) + 1,
-        posts: [newPost, ...(old?.posts ?? [])],
-        skip: old?.skip ?? 0,
-        limit: old?.limit ?? 10,
-      }))
+      queryClient.invalidateQueries(queryKey) // 목록 재요청
     },
     onError: (err) => {
       console.error("게시물 추가 실패:", err)

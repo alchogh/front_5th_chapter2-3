@@ -8,11 +8,14 @@ export const TagSelectOptions = () => {
 
   return (
     <>
-      {tags?.map((tag: Tag) => (
-        <SelectItem key={tag.url} value={tag.slug}>
-          {tag.slug}
-        </SelectItem>
-      ))}
+      {tags?.map((tag: Tag) => {
+        console.log(tag.slug)
+        return (
+          <SelectItem key={tag.url} value={tag.slug}>
+            {tag.slug}
+          </SelectItem>
+        )
+      })}
     </>
   )
 }

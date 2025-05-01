@@ -1,3 +1,5 @@
+import { userAPI } from "../../users/model/api"
+import { User } from "../../users/model/type"
 import { NewPost, Post, PostListResponse } from "./type"
 
 export const postAPI = {
@@ -49,5 +51,50 @@ export const postAPI = {
     await fetch(`/api/posts/${id}`, {
       method: "DELETE",
     })
+  },
+
+  getPostsWithAuthors: async ({ limit, skip }: { limit: number; skip: number }) => {
+    // 게시물 가져오기
+    const postsData = await postAPI.getPosts({ limit, skip })
+
+    if (postsData.posts.length === 0) {
+      return {
+        posts: [],
+        total: postsData.total,
+      }
+    }
+    // 사용자 가져오기
+    const usersData = await userAPI.getUsers({ limit: 0, skip: 0 })
+
+    const postsWithUsers: Post[] = postsData.posts.map((post) => {
+      const author = usersData.users.find((user) => user.id === post.userId)
+      if (!author) throw new Error(`User not found for userId: ${post.userId}`)
+      return { ...post, author }
+    })
+
+    return {
+      posts: postsWithUsers,
+      total: postsData.total,
+    }
+  },
+
+  getPostsByTag: async (tag: string): Promise<{ posts: Post[]; total: number }> => {
+    const [postsRes, usersRes] = await Promise.all([
+      fetch(`/api/posts/tag/${tag}`),
+      fetch(`/api/users?limit=0&select=username,image`),
+    ])
+
+    const postsData = await postsRes.json()
+    const usersData = await usersRes.json()
+
+    const postsWithUsers = postsData.posts.map((post: Post) => ({
+      ...post,
+      author: usersData.users.find((user: User) => user.id === post.userId),
+    }))
+
+    return {
+      posts: postsWithUsers,
+      total: postsData.total,
+    }
   },
 }
